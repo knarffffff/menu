@@ -1,217 +1,255 @@
-package gamemanu;
+package gamemanu; 
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.Frame;
-import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.RenderingHints;
-import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.Line;
-import javax.sound.sampled.Mixer;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-public class GameMenu extends JPanel implements ActionListener, SettingsChangeListener {
-    private static final int FRAME_WIDTH  = 800;
-    private static final int FRAME_HEIGHT = 600;
-    private static final int BUTTON_WIDTH = 200;
-    private static final int BUTTON_HEIGHT= 50;
-    private static final int STAR_COUNT  = 100;
-    private static final int STAR_SPEED  = 2;
-    private static Color BG_COLOR        = new Color(10, 10, 40);
-    private static final Color STAR_COLOR= new Color(200, 220, 255);
+public class GameMenu extends JPanel
+        implements ActionListener, SettingsChangeListener {
 
-    private final Point[] stars = new Point[STAR_COUNT];
-    private int backgroundY = 0;
-    private final Random random = new Random();
+    private Timer timer;
+    private JButton playButton, settingsButton, rulesButton, exitButton;
 
-    private final JButton playButton;
-    private final JButton settingsButton;
-    private final JButton rulesButton;
-    private final JButton exitButton;
+    
+    private Random rand = new Random();
 
-    private int fps = 0;
-    private int framesCount = 0;
-    private long lastFpsTime = System.currentTimeMillis();
+    // Tank position
+    private int tankX = -100, tankY = 450;
 
-    private final Timer timer;
+    // Effects
+    private java.util.List<Explosion> explosions   = new ArrayList<>();
+    private java.util.List<SmokeTrail> smokeTrails = new ArrayList<>();
+    private java.util.List<Gunfire> gunfires       = new ArrayList<>();
+    private java.util.List<Cloud> clouds           = new ArrayList<>();
+
+    /** Brightness level 1–10 */
+    private int brightnessLevel = 10;
 
     public GameMenu() {
-        setPreferredSize(new Dimension(FRAME_WIDTH, FRAME_HEIGHT));
         setLayout(null);
-        initStars();
 
-        int cx = (FRAME_WIDTH - BUTTON_WIDTH) / 2;
-        playButton     = createButton("Play",     cx, 180);
-        settingsButton = createButton("Settings", cx, 250);
-        rulesButton    = createButton("Rules",    cx, 320);
-        exitButton     = createButton("Exit",     cx, 390);
+        // Initialize music
+        // music.init("res/game_music.wav");
 
+        // Create buttons
+        playButton     = createButton("Play",     300, 180);
+        settingsButton = createButton("Settings", 300, 250);
+        rulesButton    = createButton("Rules",    300, 320);
+        exitButton     = createButton("Exit",     300, 390);
         add(playButton);
         add(settingsButton);
         add(rulesButton);
         add(exitButton);
 
-        timer = new Timer(16, this);
-        timer.start();
-    }
-
-    private void initStars() {
-        for (int i = 0; i < STAR_COUNT; i++) {
-            stars[i] = new Point(random.nextInt(FRAME_WIDTH), random.nextInt(FRAME_HEIGHT));
+        // Generate clouds
+        for (int i = 0; i < 5; i++) {
+            clouds.add(new Cloud(
+                rand.nextInt(800),
+                rand.nextInt(150)
+            ));
         }
+
+        // Start animation timer
+        timer = new Timer(30, this);
+        timer.start();
     }
 
     private JButton createButton(String text, int x, int y) {
         JButton btn = new JButton(text);
-        btn.setBounds(x, y, BUTTON_WIDTH, BUTTON_HEIGHT);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
+        btn.setBounds(x, y, 200, 50);
         btn.setFocusPainted(false);
-        btn.setFont(new Font("Arial", Font.BOLD, 20));
-        btn.setForeground(Color.WHITE);
-        btn.setActionCommand(text.toUpperCase());
-        btn.addActionListener(this);
+        btn.setFont(new Font("Monospaced", Font.BOLD, 20));
+        btn.addActionListener(e -> handleButtonClick(text));
         return btn;
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        String cmd = e.getActionCommand();
-        switch (cmd) {
-            case "PLAY"     -> System.out.println("Starting game...");
-            case "SETTINGS" -> openSettingsDialog();
-            case "RULES"    -> System.out.println("Showing game rules...");
-            case "EXIT"     -> System.exit(0);
-        }
-        backgroundY = (backgroundY + STAR_SPEED) % getHeight();
-        repaint();
-    }
+    private void handleButtonClick(String buttonText) {
+       
 
-    private void openSettingsDialog() {
-        Window win = SwingUtilities.getWindowAncestor(this);
-        new SettingsDialog((Frame) win, this).setVisible(true);
-    }
+        switch (buttonText) {
+            case "Play":
+                System.out.println("Play the game!");
+                break;
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            case "Settings":
+                JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+                SettingsDialog dlg = new SettingsDialog(parent, this);
+                dlg.pack();
+                dlg.setLocationRelativeTo(parent);
+                dlg.setVisible(true);
+                break;
 
-        long now = System.currentTimeMillis();
-        framesCount++;
-        if (now - lastFpsTime >= 1000) {
-            fps = framesCount;
-            framesCount = 0;
-            lastFpsTime = now;
-        }
+            case "Rules":
+                System.out.println("Show how to play.");
+                break;
 
-        drawBackground(g2d);
-        drawTitle(g2d);
-        g2d.setFont(new Font("Consolas", Font.PLAIN, 14));
-        g2d.setColor(Color.WHITE);
-        g2d.drawString("FPS: " + fps, 10, 20);
-    }
-
-    private void drawBackground(Graphics2D g) {
-        g.setColor(BG_COLOR);
-        g.fillRect(0, 0, getWidth(), getHeight());
-        g.setColor(STAR_COLOR);
-        for (Point p : stars) {
-            int y = (p.y + backgroundY) % getHeight();
-            int size = 1 + (p.x % 3);
-            g.fillOval(p.x, y, size, size);
+            case "Exit":
+                System.exit(0);
+                break;
         }
     }
 
-    private void drawTitle(Graphics2D g2d) {
-        String title = "ARMS OF TANKS";
-        Font font = new Font("Arial", Font.BOLD, 56);
-        g2d.setFont(font);
-        FontMetrics fm = g2d.getFontMetrics();
-        int w = fm.stringWidth(title);
-        int x = (getWidth() - w) / 2;
-        int y = 100;
-        g2d.setColor(new Color(150,120,0));
-        g2d.drawString(title, x + 3, y + 3);
-        GradientPaint gp = new GradientPaint(x, y, new Color(255,215,0),
-                                             x, y + fm.getHeight(), new Color(200,170,0));
-        g2d.setPaint(gp);
-        g2d.drawString(title, x, y);
-    }
-
-    /**
-     * SettingsChangeListener methods
-     * These will update the game settings based on user input
-     */
+    // === SettingsChangeListener  ===
     @Override
     public void onVolumeChanged(int level) {
-        float gain = (level - 1) / 9.0f;  // 0.0 - 1.0
-        setGameMasterGain(gain);
+        float vol = Math.max(0f, Math.min(1f, level / 10f));
+        // If you had a music player, you would set its volume here
+        System.out.println("Volume set to: " + level);
     }
 
     @Override
     public void onBrightnessChanged(int level) {
-        float factor = 0.2f + (level - 1) * 0.08f;
-        int r = (int)(10 * factor);
-        int g = (int)(10 * factor);
-        int b = (int)(40 * factor);
-        BG_COLOR = new Color(r, g, b);
-        repaint();
+        brightnessLevel = Math.max(1, Math.min(10, level));
+        System.out.println("Brightness set to: " + brightnessLevel);
+    }
+    // === SettingsChangeListener Over ===
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+
+        // Adjust sky color based on brightness level
+        int baseR = 135, baseG = 206, baseB = 235;
+        float f = brightnessLevel / 10f;
+        int r = (int)(baseR * f), gg = (int)(baseG * f), b = (int)(baseB * f);
+        g2.setColor(new Color(r, gg, b));
+        g2.fillRect(0, 0, getWidth(), getHeight());
+
+        // Floor
+        g2.setColor(new Color(34, 139, 34));
+        g2.fillRect(0, getHeight() - 150, getWidth(), 150);
+
+        // Tank and title
+        drawTank(g2);
+        drawTitle(g2);
+
+        // Effects
+        updateAndDraw(explosions,   g2);
+        updateAndDraw(smokeTrails,  g2);
+        updateAndDraw(gunfires,     g2);
+
+        // Randomly generate new effects
+        if (rand.nextInt(20) == 0) explosions.add(new Explosion());
+        if (rand.nextInt(10) == 0) smokeTrails.add(new SmokeTrail());
+        if (rand.nextInt( 6) == 0) gunfires.add(new Gunfire());
     }
 
-
-    // Sets the master gain for the audio system
-    private void setGameMasterGain(float gain) {
-        try {
-            Mixer.Info[] infos = AudioSystem.getMixerInfo();
-            Mixer mixer = AudioSystem.getMixer(infos[0]);
-            mixer.open();
-            Line.Info[] lines = mixer.getTargetLineInfo();
-            for (Line.Info li : lines) {
-                Line line = mixer.getLine(li);
-                line.open();
-                if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                    FloatControl ctrl =
-                        (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
-                    float min = ctrl.getMinimum();
-                    float max = ctrl.getMaximum();
-                    float value = min + gain * (max - min);
-                    ctrl.setValue(value);
-                }
-                line.close();
-            }
-            mixer.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+    private <T extends Effect> void updateAndDraw(java.util.List<T> list, Graphics2D g) {
+        for (Iterator<T> it = list.iterator(); it.hasNext(); ) {
+            T e = it.next();
+            e.update();
+            e.draw(g);
+            if (e.isDone()) it.remove();
         }
     }
 
-    // === Game menu ===
+    private void drawTitle(Graphics2D g2) {
+        String title = "IRON VANGUARD";
+        Font font = new Font("Monospaced", Font.BOLD, 48);
+        g2.setFont(font);
+        g2.setRenderingHint(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+        );
+        FontMetrics fm = g2.getFontMetrics(font);
+        int w = fm.stringWidth(title), x = (getWidth() - w) / 2, y = 100;
+        g2.setColor(Color.DARK_GRAY);
+        g2.drawString(title, x + 3, y + 3);
+        g2.setColor(Color.GREEN.darker());
+        g2.drawString(title, x, y);
+    }
+
+    private void drawTank(Graphics2D g) {
+        g.setColor(new Color(60, 80, 60));
+        g.fillRect(tankX, tankY, 100, 30);
+        g.fillRect(tankX + 20, tankY - 20, 60, 20);
+        g.fillRect(tankX + 75, tankY - 15, 30, 5);
+        g.setColor(Color.BLACK);
+        for (int i = 0; i < 5; i++) {
+            g.fillOval(tankX + i * 20, tankY + 25, 15, 15);
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        tankX += 2;
+        if (tankX > getWidth()) tankX = -120;
+        for (Cloud c : clouds) {
+            c.x -= 1;
+            if (c.x < -100) c.x = getWidth();
+        }
+        repaint();
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Arms of Tanks");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setResizable(false);
-            frame.add(new GameMenu());
-            frame.pack();
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-        });
+        JFrame frame = new JFrame("Iron Vanguard");
+        GameMenu menu = new GameMenu();
+        frame.add(menu);
+        frame.setSize(800, 600);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
+        frame.setVisible(true);
+    }
+
+
+    
+    private abstract class Effect {
+        abstract void update();
+        abstract void draw(Graphics2D g);
+        abstract boolean isDone();
+    }
+
+    public class Explosion extends Effect {
+        int x = rand.nextInt(800), y = rand.nextInt(300) + 100;
+        int radius = 10, max = 30;
+        boolean done = false;
+        void update() { radius += 2; if (radius > max) done = true; }
+        void draw(Graphics2D g) {
+            g.setColor(new Color(255, rand.nextInt(100), 0, 180));
+            g.fillOval(x - radius/2, y - radius/2, radius, radius);
+        }
+        boolean isDone() { return done; }
+    }
+
+    public class SmokeTrail extends Effect {
+        int x = rand.nextInt(800), y = rand.nextInt(200) + 250;
+        int size = 20, alpha = 200;
+        void update() { y -= 1; alpha -= 4; }
+        void draw(Graphics2D g) {
+            g.setColor(new Color(120, 120, 120, Math.max(0, alpha)));
+            g.fillOval(x, y, size, size);
+        }
+        boolean isDone() { return alpha <= 0; }
+    }
+
+    public class Gunfire extends Effect {
+        int x = rand.nextInt(800), y = rand.nextInt(200) + 150;
+        int length = 40;
+        void update() { length -= 5; }
+        void draw(Graphics2D g) {
+            g.setColor(Color.YELLOW);
+            g.drawLine(x, y, x, y - length);
+        }
+        boolean isDone() { return length <= 0; }
+    }
+
+    static class Cloud {
+        int x, y;
+        Cloud(int x, int y) { this.x = x; this.y = y; }
     }
 }
