@@ -1,4 +1,4 @@
-package gamemanu; 
+package com.example.gamemenu; 
 
 import java.awt.Color;
 import java.awt.Font;
@@ -18,12 +18,12 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-public class GameMenu extends JPanel
-        implements ActionListener, SettingsChangeListener {
-
+public class GameMenu extends JPanel implements ActionListener, SettingsChangeListener 
+{
     private Timer timer;
     private JButton playButton, settingsButton, rulesButton, exitButton;
-
+    
+    private MusicPlayer music = new MusicPlayer();
     
     private Random rand = new Random();
 
@@ -39,11 +39,13 @@ public class GameMenu extends JPanel
     /** Brightness level 1–10 */
     private int brightnessLevel = 10;
 
-    public GameMenu() {
+    public GameMenu() 
+    {
         setLayout(null);
 
         // Initialize music
         // music.init("res/game_music.wav");
+        music.init("res/menu_music.wav");
 
         // Create buttons
         playButton     = createButton("Play",     300, 180);
@@ -56,7 +58,8 @@ public class GameMenu extends JPanel
         add(exitButton);
 
         // Generate clouds
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++) 
+        {
             clouds.add(new Cloud(
                 rand.nextInt(800),
                 rand.nextInt(150)
@@ -68,7 +71,8 @@ public class GameMenu extends JPanel
         timer.start();
     }
 
-    private JButton createButton(String text, int x, int y) {
+    private JButton createButton(String text, int x, int y) 
+    {
         JButton btn = new JButton(text);
         btn.setBounds(x, y, 200, 50);
         btn.setFocusPainted(false);
@@ -77,16 +81,17 @@ public class GameMenu extends JPanel
         return btn;
     }
 
-    private void handleButtonClick(String buttonText) {
-       
+    private void handleButtonClick(String buttonText) 
+    {
+        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
 
-        switch (buttonText) {
+        switch (buttonText) 
+        {
             case "Play":
                 System.out.println("Play the game!");
                 break;
 
             case "Settings":
-                JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
                 SettingsDialog dlg = new SettingsDialog(parent, this);
                 dlg.pack();
                 dlg.setLocationRelativeTo(parent);
@@ -94,32 +99,48 @@ public class GameMenu extends JPanel
                 break;
 
             case "Rules":
-                System.out.println("Show how to play.");
+                Rules rulesPanel = new Rules(e -> 
+                {
+                    // Go back to the menu
+                    parent.getContentPane().removeAll();
+                    parent.add(new GameMenu());
+                    parent.revalidate();
+                    parent.repaint();
+                });
+
+                parent.getContentPane().removeAll();
+                parent.add(rulesPanel);
+                parent.revalidate();
+                parent.repaint();
                 break;
 
             case "Exit":
                 System.exit(0);
                 break;
-        }
-    }
+     }
+}
+
 
     // === SettingsChangeListener  ===
     @Override
-    public void onVolumeChanged(int level) {
+    public void onVolumeChanged(int level) 
+    {
         float vol = Math.max(0f, Math.min(1f, level / 10f));
-        // If you had a music player, you would set its volume here
+        music.setVolume(vol); // Connected to MusicPlayer
         System.out.println("Volume set to: " + level);
     }
 
     @Override
-    public void onBrightnessChanged(int level) {
+    public void onBrightnessChanged(int level) 
+    {
         brightnessLevel = Math.max(1, Math.min(10, level));
         System.out.println("Brightness set to: " + brightnessLevel);
     }
     // === SettingsChangeListener Over ===
 
     @Override
-    protected void paintComponent(Graphics g) {
+    protected void paintComponent(Graphics g) 
+    {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
@@ -149,8 +170,10 @@ public class GameMenu extends JPanel
         if (rand.nextInt( 6) == 0) gunfires.add(new Gunfire());
     }
 
-    private <T extends Effect> void updateAndDraw(java.util.List<T> list, Graphics2D g) {
-        for (Iterator<T> it = list.iterator(); it.hasNext(); ) {
+    private <T extends Effect> void updateAndDraw(java.util.List<T> list, Graphics2D g) 
+    {
+        for (Iterator<T> it = list.iterator(); it.hasNext(); ) 
+        {
             T e = it.next();
             e.update();
             e.draw(g);
@@ -158,11 +181,14 @@ public class GameMenu extends JPanel
         }
     }
 
-    private void drawTitle(Graphics2D g2) {
-        String title = "IRON VANGUARD";
+    private void drawTitle(Graphics2D g2) 
+    {
+        String title = "VANGUARD ALLEY"; //Name of game
         Font font = new Font("Monospaced", Font.BOLD, 48);
         g2.setFont(font);
-        g2.setRenderingHint(
+        
+        g2.setRenderingHint
+        (
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON
         );
@@ -174,30 +200,35 @@ public class GameMenu extends JPanel
         g2.drawString(title, x, y);
     }
 
-    private void drawTank(Graphics2D g) {
+    private void drawTank(Graphics2D g) 
+    {
         g.setColor(new Color(60, 80, 60));
         g.fillRect(tankX, tankY, 100, 30);
         g.fillRect(tankX + 20, tankY - 20, 60, 20);
         g.fillRect(tankX + 75, tankY - 15, 30, 5);
         g.setColor(Color.BLACK);
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++) 
+        {
             g.fillOval(tankX + i * 20, tankY + 25, 15, 15);
         }
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(ActionEvent e) 
+    {
         tankX += 2;
         if (tankX > getWidth()) tankX = -120;
-        for (Cloud c : clouds) {
+        for (Cloud c : clouds) 
+        {
             c.x -= 1;
             if (c.x < -100) c.x = getWidth();
         }
         repaint();
     }
 
-    public static void main(String[] args) {
-        JFrame frame = new JFrame("Iron Vanguard");
+    public static void main(String[] args) 
+    {
+        JFrame frame = new JFrame("Vanguard Alley");
         GameMenu menu = new GameMenu();
         frame.add(menu);
         frame.setSize(800, 600);
@@ -207,48 +238,59 @@ public class GameMenu extends JPanel
     }
 
 
-    
-    private abstract class Effect {
+    //Effects for Animation in background
+    private abstract class Effect 
+    {
         abstract void update();
         abstract void draw(Graphics2D g);
         abstract boolean isDone();
     }
 
-    public class Explosion extends Effect {
+    public class Explosion extends Effect 
+    {
         int x = rand.nextInt(800), y = rand.nextInt(300) + 100;
         int radius = 10, max = 30;
         boolean done = false;
         void update() { radius += 2; if (radius > max) done = true; }
-        void draw(Graphics2D g) {
+        
+        void draw(Graphics2D g) 
+        {
             g.setColor(new Color(255, rand.nextInt(100), 0, 180));
             g.fillOval(x - radius/2, y - radius/2, radius, radius);
         }
         boolean isDone() { return done; }
     }
 
-    public class SmokeTrail extends Effect {
+    public class SmokeTrail extends Effect 
+    {
         int x = rand.nextInt(800), y = rand.nextInt(200) + 250;
         int size = 20, alpha = 200;
         void update() { y -= 1; alpha -= 4; }
-        void draw(Graphics2D g) {
+        
+        void draw(Graphics2D g) 
+        {
             g.setColor(new Color(120, 120, 120, Math.max(0, alpha)));
             g.fillOval(x, y, size, size);
         }
         boolean isDone() { return alpha <= 0; }
     }
 
-    public class Gunfire extends Effect {
+    public class Gunfire extends Effect 
+    {
         int x = rand.nextInt(800), y = rand.nextInt(200) + 150;
         int length = 40;
         void update() { length -= 5; }
-        void draw(Graphics2D g) {
+        
+        void draw(Graphics2D g) 
+        {
             g.setColor(Color.YELLOW);
             g.drawLine(x, y, x, y - length);
         }
         boolean isDone() { return length <= 0; }
     }
 
-    static class Cloud {
+    static class Cloud 
+    {
         int x, y;
         Cloud(int x, int y) { this.x = x; this.y = y; }
     }
