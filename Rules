@@ -40,14 +40,6 @@ public class Rules extends JPanel
             g2.fillRect(x, 0, 5, getHeight());
         }
 
-        // Crates/ammo boxes at bottom
-        g2.setColor(new Color(139, 69, 19)); // brown
-        g2.fillRect(50, 450, 120, 80);
-        g2.fillRect(200, 470, 100, 60);
-        g2.setColor(Color.BLACK);
-        g2.drawRect(50, 450, 120, 80);
-        g2.drawRect(200, 470, 100, 60);
-
         // Weapons silhouette effect
         g2.setColor(new Color(40, 40, 40));
         g2.fillRect(650, 300, 100, 20); // rifle stock
@@ -60,15 +52,13 @@ public class Rules extends JPanel
         g2.drawString("RULES", 330, 80);
 
         // Rules text
-        g2.setFont(new Font("Monospaced", Font.PLAIN, 18));
-        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.PLAIN, 18));
+        g2.setColor(Color.RED);
         List<String> rules = Arrays.asList
         (
-            "1. Use arrow keys or WASD to move your tank.",
-            "2. Press SPACE to shoot.",
-            "3. Avoid enemy fire and obstacles.",
-            "4. Collect power-ups for health and ammo.",
-            "5. Destroy all enemy tanks to win!"
+            "1. Use hand gestures in front of webcam to move your tank.",
+            "2. Make a fist gesture to SHOOT.",
+            "3. Kill all enemies and proceed to the white checkpoint."
         );
 
         int y = 150;
