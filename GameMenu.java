@@ -9,9 +9,11 @@ import javax.swing.Timer;
 public class GameMenu extends JPanel implements ActionListener, SettingsChangeListener 
 {
     private Timer timer;
-    private JButton playButton, settingsButton, rulesButton, exitButton;
+    private JButton playButton, settingsButton, rulesButton, creditsButton, exitButton;
     private MusicPlayer music = new MusicPlayer();
-
+    private static GameMenu mainMenu;
+        
+    
  // Maze definition (28 rows x 36 cols, 1 = wall, 0 = path)
     private final int[][] maze = 
     {
@@ -57,18 +59,27 @@ public class GameMenu extends JPanel implements ActionListener, SettingsChangeLi
     public GameMenu() 
     {
         setLayout(null);
-
-        // Music
+        
+        if (mainMenu == null)
+        {
+            mainMenu = this;
+        }
+        
+        //music file
         music.init("res/menu_music.wav");
 
         // Buttons
         playButton     = createButton("Play",     300, 200);
         settingsButton = createButton("Settings", 300, 270);
         rulesButton    = createButton("Rules",    300, 340);
-        exitButton     = createButton("Exit",     300, 410);
+        creditsButton  = createButton("Credits",  300, 410);
+        exitButton     = createButton("Exit",     300, 480);
+
+        
         add(playButton);
         add(settingsButton);
         add(rulesButton);
+        add(creditsButton);
         add(exitButton);
 
         // Tanks
@@ -112,7 +123,7 @@ public class GameMenu extends JPanel implements ActionListener, SettingsChangeLi
                 {
                     // Go back to the menu
                     parent.getContentPane().removeAll();
-                    parent.add(new GameMenu());
+                    parent.add(mainMenu);
                     parent.revalidate();
                     parent.repaint();
                 });
@@ -122,13 +133,29 @@ public class GameMenu extends JPanel implements ActionListener, SettingsChangeLi
                 parent.revalidate();
                 parent.repaint();
                 break;
+                
+             case "Credits":
+                Credits creditsPanel = new Credits(e -> 
+                {
+                    // Go back to the menu
+                    parent.getContentPane().removeAll();
+                    parent.revalidate();
+                    parent.add(mainMenu);
+                    parent.repaint();
+                });
+
+                parent.getContentPane().removeAll();
+                parent.add(creditsPanel);
+                parent.revalidate();
+                parent.repaint();
+                break;
 
             case "Exit":
                 System.exit(0);
                 break;
         }
     }
-
+    
     @Override
     public void onVolumeChanged(int level) 
     {
@@ -225,7 +252,8 @@ public void actionPerformed(ActionEvent e)
     }
 
     // Occasionally spawn new enemy
-    if (rand.nextInt(30) == 0 && enemies.size() < 5) {
+    if (rand.nextInt(30) == 0 && enemies.size() < 5) 
+    {
         spawnEnemy();
     }
 
@@ -266,8 +294,8 @@ private void respawnPlayer()
     public static void main(String[] args) 
     {
         JFrame frame = new JFrame("Vanguard Alley");
-        GameMenu menu = new GameMenu();
-        frame.add(menu);
+        GameMenu mainMenu = new GameMenu();
+        frame.add(mainMenu);
         frame.setSize(800, 600);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
