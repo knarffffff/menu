@@ -52,6 +52,7 @@ public class TankMazeGame {
     private WinRenderer winRenderer;
     private LoseRenderer loseRenderer;
     private LevelRenderer levelRenderer;
+    private PauseRenderer pauseRenderer;
     private GameState state;
 
     // Gameplay elements
@@ -81,6 +82,17 @@ public class TankMazeGame {
         {0.02f, 0.1f, 0.05f}
     };
 
+    // Key state tracking to prevent repeated triggering
+    private boolean eKeyPressed = false;
+    private boolean plusKeyPressed = false;
+    private boolean minusKeyPressed = false;
+    private boolean upKeyPressed = false;
+    private boolean downKeyPressed = false;
+    
+    // Volume and brightness control
+    private float volume = 0.7f; // default volume 70%
+    private float brightness = 0.8f; // default brightness 80%
+
     private void initGestures() {
         grabber = new OpenCVFrameGrabber(0);
         try {
@@ -109,8 +121,9 @@ public class TankMazeGame {
         winRenderer = new WinRenderer(fontRenderer);
         loseRenderer = new LoseRenderer(fontRenderer);
         levelRenderer = new LevelRenderer(fontRenderer);
+        pauseRenderer = new PauseRenderer(fontRenderer);
 
-        //Enter the game directly when starting
+        // Enter the game directly when starting
         currentLevel = 1;
         startNewGame(currentLevel);
         state = GameState.PLAYING;
@@ -190,6 +203,37 @@ public class TankMazeGame {
                     }
                 }
 
+                // Apply brightness effect - fixed screen overlay
+                if (brightness < 1.0f) {
+                    // Save current projection and modelview matrices
+                    glMatrixMode(GL_PROJECTION);
+                    glPushMatrix();
+                    glLoadIdentity();
+                    glOrtho(0, width, height, 0, -1, 1); // Switch to screen coordinates
+                    
+                    glMatrixMode(GL_MODELVIEW);
+                    glPushMatrix();
+                    glLoadIdentity();
+                    
+                    // Apply brightness overlay in screen space
+                    glEnable(GL_BLEND);
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glColor4f(0.0f, 0.0f, 0.0f, 1.0f - brightness);
+                    glBegin(GL_QUADS);
+                    glVertex2f(0, 0);
+                    glVertex2f(width, 0);
+                    glVertex2f(width, height);
+                    glVertex2f(0, height);
+                    glEnd();
+                    glDisable(GL_BLEND);
+                    
+                    // Restore previous matrix state
+                    glPopMatrix();
+                    glMatrixMode(GL_PROJECTION);
+                    glPopMatrix();
+                    glMatrixMode(GL_MODELVIEW);
+                }
+
             } else {
                 // UI states
                 glMatrixMode(GL_PROJECTION);
@@ -201,6 +245,11 @@ public class TankMazeGame {
                     case MENU:
                         menuRenderer.render();
                         handleMenu();
+                        break;
+
+                    case PAUSED:
+                        pauseRenderer.render(volume, brightness);
+                        handlePause();
                         break;
 
                     case WIN:
@@ -255,6 +304,7 @@ public class TankMazeGame {
         GL.createCapabilities();
 
         backgroundMusic = new AudioPlayer("audio/music.wav");
+        backgroundMusic.setVolume(volume);
         backgroundMusic.play();
 
         glfwSwapInterval(1);
@@ -338,7 +388,77 @@ public class TankMazeGame {
             glfwSetWindowShouldClose(window, true);
     }
 
+    private void handlePause() {
+        // Check E key to resume game
+        boolean currentEKeyState = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+        if (currentEKeyState && !eKeyPressed) {
+            state = GameState.PLAYING;
+        }
+        eKeyPressed = currentEKeyState;
+        
+        // Check + key to increase volume
+        boolean currentPlusKeyState = glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS || 
+                                     glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS;
+        if (currentPlusKeyState && !plusKeyPressed) {
+            volume = Math.min(1.0f, volume + 0.1f);
+            backgroundMusic.setVolume(volume);
+        }
+        plusKeyPressed = currentPlusKeyState;
+        
+        // Check - key to decrease volume
+        boolean currentMinusKeyState = glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS || 
+                                      glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS;
+        if (currentMinusKeyState && !minusKeyPressed) {
+            volume = Math.max(0.0f, volume - 0.1f);
+            backgroundMusic.setVolume(volume);
+        }
+        minusKeyPressed = currentMinusKeyState;
+        
+        // Check up arrow key to increase brightness
+        boolean currentUpKeyState = glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS;
+        if (currentUpKeyState && !upKeyPressed) {
+            brightness = Math.min(1.0f, brightness + 0.1f);
+        }
+        upKeyPressed = currentUpKeyState;
+        
+        // Check down arrow key to decrease brightness
+        boolean currentDownKeyState = glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS;
+        if (currentDownKeyState && !downKeyPressed) {
+            brightness = Math.max(0.0f, brightness - 0.1f);
+        }
+        downKeyPressed = currentDownKeyState;
+        
+        // ESC key to return to GameMenu
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            // Stop background music
+            if (backgroundMusic != null) {
+                backgroundMusic.stop();
+            }
+            
+            // Close current window
+            glfwSetWindowShouldClose(window, true);
+            
+            // Launch GameMenu
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                GameMenu.main(new String[0]);
+            });
+        }
+    }
+
     private void handleGame() {
+        // Check E key to pause game
+        boolean currentEKeyState = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+        
+        if (currentEKeyState && !eKeyPressed) {
+            state = GameState.PAUSED;
+        }
+        eKeyPressed = currentEKeyState;
+        
+        // If game is paused, don't process other inputs
+        if (state == GameState.PAUSED) {
+            return;
+        }
+
         OpenCVFrameConverter.ToMat converter = new OpenCVFrameConverter.ToMat();
         try {
             org.bytedeco.javacv.Frame frame = grabber.grab();
@@ -389,7 +509,7 @@ public class TankMazeGame {
             startNewGame(currentLevel);
         }
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            // ESC → Back GameMenu
+            // ESC → Back to GameMenu
             glfwSetWindowShouldClose(window, true);
             javax.swing.SwingUtilities.invokeLater(() -> {
                 GameMenu.main(new String[0]);
@@ -442,20 +562,3 @@ public class TankMazeGame {
         new TankMazeGame().run();
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
